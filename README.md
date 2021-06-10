@@ -30,13 +30,13 @@ The code is very clean but built as a teaching tool. So there are parts that can
 ## scull.init
 ### macros
 #### SCULL_NR_DEVS
-Set to 4, I'm not sure what they do with all 4 devices. There is a mention of the memory being global and persistent. /dev/scull0 - /dev/scull3 are all created (and removed) at the same time and have different memory buffers. Maybe one device can be used for writing data and another can be used for reading info about the results of operations, don't know how you want to use this
+Set to 4, I'm not sure what they do with all 4 devices (files). There is a mention of the memory being global and persistent. /dev/scull0 - /dev/scull3 are all created (and removed) at the same time and have different memory buffers. Maybe one device can be used for writing data and another can be used for reading info about the results of operations, don't know how you want to use this
 
 #### SCULL_QUANTUM 
 The scull data buffer is a linked list of various allocations of n length. SCULL_QUANTUM is the size of the allocations used. I think this should be a multiple of 64 bits, 512 bytes or whatever.
 
 #### SCULL_QSET 
----- Hmmm not sure what I wrote here is right, I need to look at this again ----
+I'm not clear on how this is used. I need to look at it more.
 The size of the original linked list. It is set to 1000 at init time. This seems a lot larger than I expect is needed for the application. Of course allocating a buffer with enough size at init time prevents the need to allocate at runtime. I doubt if that much memory is needed.
 
 #### SCULL_P_BUFFER 
@@ -82,7 +82,7 @@ utility function for following down the linked list
 #### scull_seq_show
 these are all used as function pointers into a struct scull_seq_ops. These are related to sequencing through the different devices but I'm not sure how it's used or what it's for
 #### scull_read_procmem
-this is a debugging function. probably really useful
+this is a debugging function. probably really useful. It walks through all four drivers
 
 
 ## Stuff I don't get yet or concerns
