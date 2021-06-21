@@ -1,5 +1,5 @@
 /*
- * pipe.c -- fifo driver for scull
+ * pipe.c -- fifo driver for swaphints
  *
  * Copyright (C) 2001 Alessandro Rubini and Jonathan Corbet
  * Copyright (C) 2001 O'Reilly & Associates
@@ -33,9 +33,9 @@
 
 #include "proc_ops_version.h"
 
-#include "scull.h"		/* local definitions */
+#include "swaphints.h"		/* local definitions */
 
-struct scull_pipe {
+struct swaphints_pipe {
         wait_queue_head_t inq, outq;       /* read and write queues */
         char *buffer, *end;                /* begin of buf, end of buf */
         int buffersize;                    /* used in pointer arithmetic */
@@ -47,40 +47,40 @@ struct scull_pipe {
 };
 
 /* parameters */
-static int scull_p_nr_devs = SCULL_P_NR_DEVS;	/* number of pipe devices */
-int scull_p_buffer =  SCULL_P_BUFFER;	/* buffer size */
-dev_t scull_p_devno;			/* Our first device number */
+static int swaphints_p_nr_devs = SWAPHINTS_P_NR_DEVS;	/* number of pipe devices */
+int swaphints_p_buffer =  SWAPHINTS_P_BUFFER;	/* buffer size */
+dev_t swaphints_p_devno;			/* Our first device number */
 
-module_param(scull_p_nr_devs, int, 0);	/* FIXME check perms */
-module_param(scull_p_buffer, int, 0);
+module_param(swaphints_p_nr_devs, int, 0);	/* FIXME check perms */
+module_param(swaphints_p_buffer, int, 0);
 
-static struct scull_pipe *scull_p_devices;
+static struct swaphints_pipe *swaphints_p_devices;
 
-static int scull_p_fasync(int fd, struct file *filp, int mode);
-static int spacefree(struct scull_pipe *dev);
+static int swaphints_p_fasync(int fd, struct file *filp, int mode);
+static int spacefree(struct swaphints_pipe *dev);
 /*
  * Open and close
  */
 
 
-static int scull_p_open(struct inode *inode, struct file *filp)
+static int swaphints_p_open(struct inode *inode, struct file *filp)
 {
-	struct scull_pipe *dev;
+	struct swaphints_pipe *dev;
 
-	dev = container_of(inode->i_cdev, struct scull_pipe, cdev);
+	dev = container_of(inode->i_cdev, struct swaphints_pipe, cdev);
 	filp->private_data = dev;
 
 	if (mutex_lock_interruptible(&dev->lock))
 		return -ERESTARTSYS;
 	if (!dev->buffer) {
 		/* allocate the buffer */
-		dev->buffer = kmalloc(scull_p_buffer, GFP_KERNEL);
+		dev->buffer = kmalloc(swaphints_p_buffer, GFP_KERNEL);
 		if (!dev->buffer) {
 			mutex_unlock(&dev->lock);
 			return -ENOMEM;
 		}
 	}
-	dev->buffersize = scull_p_buffer;
+	dev->buffersize = swaphints_p_buffer;
 	dev->end = dev->buffer + dev->buffersize;
 	dev->rp = dev->wp = dev->buffer; /* rd and wr from the beginning */
 
@@ -96,12 +96,12 @@ static int scull_p_open(struct inode *inode, struct file *filp)
 
 
 
-static int scull_p_release(struct inode *inode, struct file *filp)
+static int swaphints_p_release(struct inode *inode, struct file *filp)
 {
-	struct scull_pipe *dev = filp->private_data;
+	struct swaphints_pipe *dev = filp->private_data;
 
 	/* remove this filp from the asynchronously notified filp's */
-	scull_p_fasync(-1, filp, 0);
+	swaphints_p_fasync(-1, filp, 0);
 	mutex_lock(&dev->lock);
 	if (filp->f_mode & FMODE_READ)
 		dev->nreaders--;
@@ -120,10 +120,10 @@ static int scull_p_release(struct inode *inode, struct file *filp)
  * Data management: read and write
  */
 
-static ssize_t scull_p_read (struct file *filp, char __user *buf, size_t count,
+static ssize_t swaphints_p_read (struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
-	struct scull_pipe *dev = filp->private_data;
+	struct swaphints_pipe *dev = filp->private_data;
 
 	if (mutex_lock_interruptible(&dev->lock))
 		return -ERESTARTSYS;
@@ -161,7 +161,7 @@ static ssize_t scull_p_read (struct file *filp, char __user *buf, size_t count,
 
 /* Wait for space for writing; caller must hold device semaphore.  On
  * error the semaphore will be released before returning. */
-static int scull_getwritespace(struct scull_pipe *dev, struct file *filp)
+static int swaphints_getwritespace(struct swaphints_pipe *dev, struct file *filp)
 {
 	while (spacefree(dev) == 0) { /* full */
 		DEFINE_WAIT(wait);
@@ -183,26 +183,26 @@ static int scull_getwritespace(struct scull_pipe *dev, struct file *filp)
 }	
 
 /* How much space is free? */
-static int spacefree(struct scull_pipe *dev)
+static int spacefree(struct swaphints_pipe *dev)
 {
 	if (dev->rp == dev->wp)
 		return dev->buffersize - 1;
 	return ((dev->rp + dev->buffersize - dev->wp) % dev->buffersize) - 1;
 }
 
-static ssize_t scull_p_write(struct file *filp, const char __user *buf, size_t count,
+static ssize_t swaphints_p_write(struct file *filp, const char __user *buf, size_t count,
                 loff_t *f_pos)
 {
-	struct scull_pipe *dev = filp->private_data;
+	struct swaphints_pipe *dev = filp->private_data;
 	int result;
 
 	if (mutex_lock_interruptible(&dev->lock))
 		return -ERESTARTSYS;
 
 	/* Make sure there's space to write */
-	result = scull_getwritespace(dev, filp);
+	result = swaphints_getwritespace(dev, filp);
 	if (result)
-		return result; /* scull_getwritespace called up(&dev->sem) */
+		return result; /* swaphints_getwritespace called up(&dev->sem) */
 
 	/* ok, space is there, accept something */
 	count = min(count, (size_t)spacefree(dev));
@@ -230,9 +230,9 @@ static ssize_t scull_p_write(struct file *filp, const char __user *buf, size_t c
 	return count;
 }
 
-static unsigned int scull_p_poll(struct file *filp, poll_table *wait)
+static unsigned int swaphints_p_poll(struct file *filp, poll_table *wait)
 {
-	struct scull_pipe *dev = filp->private_data;
+	struct swaphints_pipe *dev = filp->private_data;
 	unsigned int mask = 0;
 
 	/*
@@ -255,9 +255,9 @@ static unsigned int scull_p_poll(struct file *filp, poll_table *wait)
 
 
 
-static int scull_p_fasync(int fd, struct file *filp, int mode)
+static int swaphints_p_fasync(int fd, struct file *filp, int mode)
 {
-	struct scull_pipe *dev = filp->private_data;
+	struct swaphints_pipe *dev = filp->private_data;
 
 	return fasync_helper(fd, filp, mode, &dev->async_queue);
 }
@@ -265,17 +265,17 @@ static int scull_p_fasync(int fd, struct file *filp, int mode)
 
 
 /* FIXME this should use seq_file */
-#ifdef SCULL_DEBUG
+#ifdef SWAPHINTS_DEBUG
 
-static int scull_read_p_mem(struct seq_file *s, void *v)
+static int swaphints_read_p_mem(struct seq_file *s, void *v)
 {
 	int i;
-	struct scull_pipe *p;
+	struct swaphints_pipe *p;
 
 #define LIMIT (PAGE_SIZE-200)        /* don't print any more after this size */
-	seq_printf(s, "Default buffersize is %i\n", scull_p_buffer);
-	for(i = 0; i<scull_p_nr_devs && s->count <= LIMIT; i++) {
-		p = &scull_p_devices[i];
+	seq_printf(s, "Default buffersize is %i\n", swaphints_p_buffer);
+	for(i = 0; i<swaphints_p_nr_devs && s->count <= LIMIT; i++) {
+		p = &swaphints_p_devices[i];
 		if (mutex_lock_interruptible(&p->lock))
 			return -ERESTARTSYS;
 		seq_printf(s, "\nDevice %i: %p\n", i, p);
@@ -288,14 +288,14 @@ static int scull_read_p_mem(struct seq_file *s, void *v)
 	return 0;
 }
 
-static int scullpipe_proc_open(struct inode *inode, struct file *file)
+static int swaphintspipe_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, scull_read_p_mem, NULL);
+	return single_open(file, swaphints_read_p_mem, NULL);
 }
 
-static struct file_operations scullpipe_proc_ops = {
+static struct file_operations swaphintspipe_proc_ops = {
 	.owner   = THIS_MODULE,
-	.open    = scullpipe_proc_open,
+	.open    = swaphintspipe_proc_open,
 	.read    = seq_read,
 	.llseek  = seq_lseek,
 	.release = single_release
@@ -307,34 +307,34 @@ static struct file_operations scullpipe_proc_ops = {
 
 /*
  * The file operations for the pipe device
- * (some are overlayed with bare scull)
+ * (some are overlayed with bare swaphints)
  */
-struct file_operations scull_pipe_fops = {
+struct file_operations swaphints_pipe_fops = {
 	.owner =	THIS_MODULE,
 	.llseek =	no_llseek,
-	.read =		scull_p_read,
-	.write =	scull_p_write,
-	.poll =		scull_p_poll,
-	.unlocked_ioctl = scull_ioctl,
-	.open =		scull_p_open,
-	.release =	scull_p_release,
-	.fasync =	scull_p_fasync,
+	.read =		swaphints_p_read,
+	.write =	swaphints_p_write,
+	.poll =		swaphints_p_poll,
+	.unlocked_ioctl = swaphints_ioctl,
+	.open =		swaphints_p_open,
+	.release =	swaphints_p_release,
+	.fasync =	swaphints_p_fasync,
 };
 
 
 /*
  * Set up a cdev entry.
  */
-static void scull_p_setup_cdev(struct scull_pipe *dev, int index)
+static void swaphints_p_setup_cdev(struct swaphints_pipe *dev, int index)
 {
-	int err, devno = scull_p_devno + index;
+	int err, devno = swaphints_p_devno + index;
     
-	cdev_init(&dev->cdev, &scull_pipe_fops);
+	cdev_init(&dev->cdev, &swaphints_pipe_fops);
 	dev->cdev.owner = THIS_MODULE;
 	err = cdev_add (&dev->cdev, devno, 1);
 	/* Fail gracefully if need be */
 	if (err)
-		printk(KERN_NOTICE "Error %d adding scullpipe%d", err, index);
+		printk(KERN_NOTICE "Error %d adding swaphintspipe%d", err, index);
 }
 
  
@@ -342,54 +342,54 @@ static void scull_p_setup_cdev(struct scull_pipe *dev, int index)
 /*
  * Initialize the pipe devs; return how many we did.
  */
-int scull_p_init(dev_t firstdev)
+int swaphints_p_init(dev_t firstdev)
 {
 	int i, result;
 
-	result = register_chrdev_region(firstdev, scull_p_nr_devs, "scullp");
+	result = register_chrdev_region(firstdev, swaphints_p_nr_devs, "swaphintsp");
 	if (result < 0) {
-		printk(KERN_NOTICE "Unable to get scullp region, error %d\n", result);
+		printk(KERN_NOTICE "Unable to get swaphintsp region, error %d\n", result);
 		return 0;
 	}
-	scull_p_devno = firstdev;
-	scull_p_devices = kmalloc(scull_p_nr_devs * sizeof(struct scull_pipe), GFP_KERNEL);
-	if (scull_p_devices == NULL) {
-		unregister_chrdev_region(firstdev, scull_p_nr_devs);
+	swaphints_p_devno = firstdev;
+	swaphints_p_devices = kmalloc(swaphints_p_nr_devs * sizeof(struct swaphints_pipe), GFP_KERNEL);
+	if (swaphints_p_devices == NULL) {
+		unregister_chrdev_region(firstdev, swaphints_p_nr_devs);
 		return 0;
 	}
-	memset(scull_p_devices, 0, scull_p_nr_devs * sizeof(struct scull_pipe));
-	for (i = 0; i < scull_p_nr_devs; i++) {
-		init_waitqueue_head(&(scull_p_devices[i].inq));
-		init_waitqueue_head(&(scull_p_devices[i].outq));
-		mutex_init(&scull_p_devices[i].lock);
-		scull_p_setup_cdev(scull_p_devices + i, i);
+	memset(swaphints_p_devices, 0, swaphints_p_nr_devs * sizeof(struct swaphints_pipe));
+	for (i = 0; i < swaphints_p_nr_devs; i++) {
+		init_waitqueue_head(&(swaphints_p_devices[i].inq));
+		init_waitqueue_head(&(swaphints_p_devices[i].outq));
+		mutex_init(&swaphints_p_devices[i].lock);
+		swaphints_p_setup_cdev(swaphints_p_devices + i, i);
 	}
-#ifdef SCULL_DEBUG
-	proc_create("scullpipe", 0, NULL, proc_ops_wrapper(&scullpipe_proc_ops,scullpipe_pops));
+#ifdef SWAPHINTS_DEBUG
+	proc_create("swaphintspipe", 0, NULL, proc_ops_wrapper(&swaphintspipe_proc_ops,swaphintspipe_pops));
 #endif
-	return scull_p_nr_devs;
+	return swaphints_p_nr_devs;
 }
 
 /*
  * This is called by cleanup_module or on failure.
  * It is required to never fail, even if nothing was initialized first
  */
-void scull_p_cleanup(void)
+void swaphints_p_cleanup(void)
 {
 	int i;
 
-#ifdef SCULL_DEBUG
-	remove_proc_entry("scullpipe", NULL);
+#ifdef SWAPHINTS_DEBUG
+	remove_proc_entry("swaphintspipe", NULL);
 #endif
 
-	if (!scull_p_devices)
+	if (!swaphints_p_devices)
 		return; /* nothing else to release */
 
-	for (i = 0; i < scull_p_nr_devs; i++) {
-		cdev_del(&scull_p_devices[i].cdev);
-		kfree(scull_p_devices[i].buffer);
+	for (i = 0; i < swaphints_p_nr_devs; i++) {
+		cdev_del(&swaphints_p_devices[i].cdev);
+		kfree(swaphints_p_devices[i].buffer);
 	}
-	kfree(scull_p_devices);
-	unregister_chrdev_region(scull_p_devno, scull_p_nr_devs);
-	scull_p_devices = NULL; /* pedantic */
+	kfree(swaphints_p_devices);
+	unregister_chrdev_region(swaphints_p_devno, swaphints_p_nr_devs);
+	swaphints_p_devices = NULL; /* pedantic */
 }

@@ -4,7 +4,7 @@
 
 # Add your debugging flag (or not) to CFLAGS
 ifeq ($(DEBUG),y)
-  DEBFLAGS = -O -g -DSCULL_DEBUG # "-O" is needed to expand inlines
+  DEBFLAGS = -O -g -DSWAPHINTS_DEBUG # "-O" is needed to expand inlines
 else
   DEBFLAGS = -O2
 endif
@@ -17,9 +17,9 @@ EXTRA_CFLAGS += -I$(LDDINC)
 ifneq ($(KERNELRELEASE),)
 # call from kernel build system
 
-scull-objs := main.o pipe.o access.o
+swaphints-objs := main.o pipe.o access.o
 
-obj-m	:= scull.o
+obj-m	:= swaphints.o
 
 else
 

@@ -32,12 +32,12 @@
 #include <linux/sched.h>
 #include <linux/sched/signal.h>
 
-#include "scull.h"        /* local definitions */
+#include "swaphints.h"        /* local definitions */
 
-static dev_t scull_a_firstdev;  /* Where our range begins */
+static dev_t swaphints_a_firstdev;  /* Where our range begins */
 
 /*
- * These devices fall back on the main scull operations. They only
+ * These devices fall back on the main swaphints operations. They only
  * differ in the implementation of open() and close()
  */
 
@@ -49,28 +49,28 @@ static dev_t scull_a_firstdev;  /* Where our range begins */
  *  it has an hw structure and an open count
  */
 
-static struct scull_dev scull_s_device;
-static atomic_t scull_s_available = ATOMIC_INIT(1);
+static struct swaphints_dev swaphints_s_device;
+static atomic_t swaphints_s_available = ATOMIC_INIT(1);
 
-static int scull_s_open(struct inode *inode, struct file *filp)
+static int swaphints_s_open(struct inode *inode, struct file *filp)
 {
-	struct scull_dev *dev = &scull_s_device; /* device information */
+	struct swaphints_dev *dev = &swaphints_s_device; /* device information */
 
-	if (! atomic_dec_and_test (&scull_s_available)) {
-		atomic_inc(&scull_s_available);
+	if (! atomic_dec_and_test (&swaphints_s_available)) {
+		atomic_inc(&swaphints_s_available);
 		return -EBUSY; /* already open */
 	}
 
-	/* then, everything else is copied from the bare scull device */
+	/* then, everything else is copied from the bare swaphints device */
 	if ( (filp->f_flags & O_ACCMODE) == O_WRONLY)
-		scull_trim(dev);
+		swaphints_trim(dev);
 	filp->private_data = dev;
 	return 0;          /* success */
 }
 
-static int scull_s_release(struct inode *inode, struct file *filp)
+static int swaphints_s_release(struct inode *inode, struct file *filp)
 {
-	atomic_inc(&scull_s_available); /* release the device */
+	atomic_inc(&swaphints_s_available); /* release the device */
 	return 0;
 }
 
@@ -78,14 +78,14 @@ static int scull_s_release(struct inode *inode, struct file *filp)
 /*
  * The other operations for the single-open device come from the bare device
  */
-struct file_operations scull_sngl_fops = {
+struct file_operations swaphints_sngl_fops = {
 	.owner =	THIS_MODULE,
-	.llseek =     	scull_llseek,
-	.read =       	scull_read,
-	.write =      	scull_write,
-	.unlocked_ioctl = scull_ioctl,
-	.open =       	scull_s_open,
-	.release =    	scull_s_release,
+	.llseek =     	swaphints_llseek,
+	.read =       	swaphints_read,
+	.write =      	swaphints_write,
+	.unlocked_ioctl = swaphints_ioctl,
+	.open =       	swaphints_s_open,
+	.release =    	swaphints_s_release,
 };
 
 
@@ -95,43 +95,43 @@ struct file_operations scull_sngl_fops = {
  * same user, but access is denied to other users if the device is open
  */
 
-static struct scull_dev scull_u_device;
-static int scull_u_count;	/* initialized to 0 by default */
-static uid_t scull_u_owner;	/* initialized to 0 by default */
-static DEFINE_SPINLOCK(scull_u_lock);
+static struct swaphints_dev swaphints_u_device;
+static int swaphints_u_count;	/* initialized to 0 by default */
+static uid_t swaphints_u_owner;	/* initialized to 0 by default */
+static DEFINE_SPINLOCK(swaphints_u_lock);
 
-static int scull_u_open(struct inode *inode, struct file *filp)
+static int swaphints_u_open(struct inode *inode, struct file *filp)
 {
-	struct scull_dev *dev = &scull_u_device; /* device information */
+	struct swaphints_dev *dev = &swaphints_u_device; /* device information */
 
-	spin_lock(&scull_u_lock);
-	if (scull_u_count && 
-	                (scull_u_owner != current_uid().val) &&  /* allow user */
-	                (scull_u_owner != current_euid().val) && /* allow whoever did su */
+	spin_lock(&swaphints_u_lock);
+	if (swaphints_u_count && 
+	                (swaphints_u_owner != current_uid().val) &&  /* allow user */
+	                (swaphints_u_owner != current_euid().val) && /* allow whoever did su */
 			!capable(CAP_DAC_OVERRIDE)) { /* still allow root */
-		spin_unlock(&scull_u_lock);
+		spin_unlock(&swaphints_u_lock);
 		return -EBUSY;   /* -EPERM would confuse the user */
 	}
 
-	if (scull_u_count == 0)
-		scull_u_owner = current_uid().val; /* grab it */
+	if (swaphints_u_count == 0)
+		swaphints_u_owner = current_uid().val; /* grab it */
 
-	scull_u_count++;
-	spin_unlock(&scull_u_lock);
+	swaphints_u_count++;
+	spin_unlock(&swaphints_u_lock);
 
-/* then, everything else is copied from the bare scull device */
+/* then, everything else is copied from the bare swaphints device */
 
 	if ((filp->f_flags & O_ACCMODE) == O_WRONLY)
-		scull_trim(dev);
+		swaphints_trim(dev);
 	filp->private_data = dev;
 	return 0;          /* success */
 }
 
-static int scull_u_release(struct inode *inode, struct file *filp)
+static int swaphints_u_release(struct inode *inode, struct file *filp)
 {
-	spin_lock(&scull_u_lock);
-	scull_u_count--; /* nothing else */
-	spin_unlock(&scull_u_lock);
+	spin_lock(&swaphints_u_lock);
+	swaphints_u_count--; /* nothing else */
+	spin_unlock(&swaphints_u_lock);
 	return 0;
 }
 
@@ -140,14 +140,14 @@ static int scull_u_release(struct inode *inode, struct file *filp)
 /*
  * The other operations for the device come from the bare device
  */
-struct file_operations scull_user_fops = {
+struct file_operations swaphints_user_fops = {
 	.owner =      THIS_MODULE,
-	.llseek =     scull_llseek,
-	.read =       scull_read,
-	.write =      scull_write,
-	.unlocked_ioctl = scull_ioctl,
-	.open =       scull_u_open,
-	.release =    scull_u_release,
+	.llseek =     swaphints_llseek,
+	.read =       swaphints_read,
+	.write =      swaphints_write,
+	.unlocked_ioctl = swaphints_ioctl,
+	.open =       swaphints_u_open,
+	.release =    swaphints_u_release,
 };
 
 
@@ -156,56 +156,56 @@ struct file_operations scull_user_fops = {
  * Next, the device with blocking-open based on uid
  */
 
-static struct scull_dev scull_w_device;
-static int scull_w_count;	/* initialized to 0 by default */
-static uid_t scull_w_owner;	/* initialized to 0 by default */
-static DECLARE_WAIT_QUEUE_HEAD(scull_w_wait);
-static DEFINE_SPINLOCK(scull_w_lock);
+static struct swaphints_dev swaphints_w_device;
+static int swaphints_w_count;	/* initialized to 0 by default */
+static uid_t swaphints_w_owner;	/* initialized to 0 by default */
+static DECLARE_WAIT_QUEUE_HEAD(swaphints_w_wait);
+static DEFINE_SPINLOCK(swaphints_w_lock);
 
-static inline int scull_w_available(void)
+static inline int swaphints_w_available(void)
 {
-	return scull_w_count == 0 ||
-		scull_w_owner == current_uid().val ||
-		scull_w_owner == current_euid().val ||
+	return swaphints_w_count == 0 ||
+		swaphints_w_owner == current_uid().val ||
+		swaphints_w_owner == current_euid().val ||
 		capable(CAP_DAC_OVERRIDE);
 }
 
 
-static int scull_w_open(struct inode *inode, struct file *filp)
+static int swaphints_w_open(struct inode *inode, struct file *filp)
 {
-	struct scull_dev *dev = &scull_w_device; /* device information */
+	struct swaphints_dev *dev = &swaphints_w_device; /* device information */
 
-	spin_lock(&scull_w_lock);
-	while (! scull_w_available()) {
-		spin_unlock(&scull_w_lock);
+	spin_lock(&swaphints_w_lock);
+	while (! swaphints_w_available()) {
+		spin_unlock(&swaphints_w_lock);
 		if (filp->f_flags & O_NONBLOCK) return -EAGAIN;
-		if (wait_event_interruptible (scull_w_wait, scull_w_available()))
+		if (wait_event_interruptible (swaphints_w_wait, swaphints_w_available()))
 			return -ERESTARTSYS; /* tell the fs layer to handle it */
-		spin_lock(&scull_w_lock);
+		spin_lock(&swaphints_w_lock);
 	}
-	if (scull_w_count == 0)
-		scull_w_owner = current_uid().val; /* grab it */
-	scull_w_count++;
-	spin_unlock(&scull_w_lock);
+	if (swaphints_w_count == 0)
+		swaphints_w_owner = current_uid().val; /* grab it */
+	swaphints_w_count++;
+	spin_unlock(&swaphints_w_lock);
 
-	/* then, everything else is copied from the bare scull device */
+	/* then, everything else is copied from the bare swaphints device */
 	if ((filp->f_flags & O_ACCMODE) == O_WRONLY)
-		scull_trim(dev);
+		swaphints_trim(dev);
 	filp->private_data = dev;
 	return 0;          /* success */
 }
 
-static int scull_w_release(struct inode *inode, struct file *filp)
+static int swaphints_w_release(struct inode *inode, struct file *filp)
 {
 	int temp;
 
-	spin_lock(&scull_w_lock);
-	scull_w_count--;
-	temp = scull_w_count;
-	spin_unlock(&scull_w_lock);
+	spin_lock(&swaphints_w_lock);
+	swaphints_w_count--;
+	temp = swaphints_w_count;
+	spin_unlock(&swaphints_w_lock);
 
 	if (temp == 0)
-		wake_up_interruptible_sync(&scull_w_wait); /* awake other uid's */
+		wake_up_interruptible_sync(&swaphints_w_wait); /* awake other uid's */
 	return 0;
 }
 
@@ -213,14 +213,14 @@ static int scull_w_release(struct inode *inode, struct file *filp)
 /*
  * The other operations for the device come from the bare device
  */
-struct file_operations scull_wusr_fops = {
+struct file_operations swaphints_wusr_fops = {
 	.owner =      THIS_MODULE,
-	.llseek =     scull_llseek,
-	.read =       scull_read,
-	.write =      scull_write,
-	.unlocked_ioctl = scull_ioctl,
-	.open =       scull_w_open,
-	.release =    scull_w_release,
+	.llseek =     swaphints_llseek,
+	.read =       swaphints_read,
+	.write =      swaphints_write,
+	.unlocked_ioctl = swaphints_ioctl,
+	.open =       swaphints_w_open,
+	.release =    swaphints_w_release,
 };
 
 /************************************************************************
@@ -231,50 +231,50 @@ struct file_operations scull_wusr_fops = {
 
 /* The clone-specific data structure includes a key field */
 
-struct scull_listitem {
-	struct scull_dev device;
+struct swaphints_listitem {
+	struct swaphints_dev device;
 	dev_t key;
 	struct list_head list;
     
 };
 
 /* The list of devices, and a lock to protect it */
-static LIST_HEAD(scull_c_list);
-static DEFINE_SPINLOCK(scull_c_lock);
+static LIST_HEAD(swaphints_c_list);
+static DEFINE_SPINLOCK(swaphints_c_lock);
 
-/* A placeholder scull_dev which really just holds the cdev stuff. */
-static struct scull_dev scull_c_device;   
+/* A placeholder swaphints_dev which really just holds the cdev stuff. */
+static struct swaphints_dev swaphints_c_device;   
 
 /* Look for a device or create one if missing */
-static struct scull_dev *scull_c_lookfor_device(dev_t key)
+static struct swaphints_dev *swaphints_c_lookfor_device(dev_t key)
 {
-	struct scull_listitem *lptr;
+	struct swaphints_listitem *lptr;
 
-	list_for_each_entry(lptr, &scull_c_list, list) {
+	list_for_each_entry(lptr, &swaphints_c_list, list) {
 		if (lptr->key == key)
 			return &(lptr->device);
 	}
 
 	/* not found */
-	lptr = kmalloc(sizeof(struct scull_listitem), GFP_KERNEL);
+	lptr = kmalloc(sizeof(struct swaphints_listitem), GFP_KERNEL);
 	if (!lptr)
 		return NULL;
 
 	/* initialize the device */
-	memset(lptr, 0, sizeof(struct scull_listitem));
+	memset(lptr, 0, sizeof(struct swaphints_listitem));
 	lptr->key = key;
-	scull_trim(&(lptr->device)); /* initialize it */
+	swaphints_trim(&(lptr->device)); /* initialize it */
 	mutex_init(&lptr->device.lock);
 
 	/* place it in the list */
-	list_add(&lptr->list, &scull_c_list);
+	list_add(&lptr->list, &swaphints_c_list);
 
 	return &(lptr->device);
 }
 
-static int scull_c_open(struct inode *inode, struct file *filp)
+static int swaphints_c_open(struct inode *inode, struct file *filp)
 {
-	struct scull_dev *dev;
+	struct swaphints_dev *dev;
 	dev_t key;
  
 	if (!current->signal->tty) { 
@@ -283,22 +283,22 @@ static int scull_c_open(struct inode *inode, struct file *filp)
 	}
 	key = tty_devnum(current->signal->tty);
 
-	/* look for a scullc device in the list */
-	spin_lock(&scull_c_lock);
-	dev = scull_c_lookfor_device(key);
-	spin_unlock(&scull_c_lock);
+	/* look for a swaphintsc device in the list */
+	spin_lock(&swaphints_c_lock);
+	dev = swaphints_c_lookfor_device(key);
+	spin_unlock(&swaphints_c_lock);
 
 	if (!dev)
 		return -ENOMEM;
 
-	/* then, everything else is copied from the bare scull device */
+	/* then, everything else is copied from the bare swaphints device */
 	if ( (filp->f_flags & O_ACCMODE) == O_WRONLY)
-		scull_trim(dev);
+		swaphints_trim(dev);
 	filp->private_data = dev;
 	return 0;          /* success */
 }
 
-static int scull_c_release(struct inode *inode, struct file *filp)
+static int swaphints_c_release(struct inode *inode, struct file *filp)
 {
 	/*
 	 * Nothing to do, because the device is persistent.
@@ -312,14 +312,14 @@ static int scull_c_release(struct inode *inode, struct file *filp)
 /*
  * The other operations for the device come from the bare device
  */
-struct file_operations scull_priv_fops = {
+struct file_operations swaphints_priv_fops = {
 	.owner =    THIS_MODULE,
-	.llseek =   scull_llseek,
-	.read =     scull_read,
-	.write =    scull_write,
-	.unlocked_ioctl = scull_ioctl,
-	.open =     scull_c_open,
-	.release =  scull_c_release,
+	.llseek =   swaphints_llseek,
+	.read =     swaphints_read,
+	.write =    swaphints_write,
+	.unlocked_ioctl = swaphints_ioctl,
+	.open =     swaphints_c_open,
+	.release =  swaphints_c_release,
 };
 
 /************************************************************************
@@ -327,29 +327,29 @@ struct file_operations scull_priv_fops = {
  * And the init and cleanup functions come last
  */
 
-static struct scull_adev_info {
+static struct swaphints_adev_info {
 	char *name;
-	struct scull_dev *sculldev;
+	struct swaphints_dev *swaphintsdev;
 	struct file_operations *fops;
-} scull_access_devs[] = {
-	{ "scullsingle", &scull_s_device, &scull_sngl_fops },
-	{ "sculluid", &scull_u_device, &scull_user_fops },
-	{ "scullwuid", &scull_w_device, &scull_wusr_fops },
-	{ "scullpriv", &scull_c_device, &scull_priv_fops }
+} swaphints_access_devs[] = {
+	{ "swaphintssingle", &swaphints_s_device, &swaphints_sngl_fops },
+	{ "swaphintsuid", &swaphints_u_device, &swaphints_user_fops },
+	{ "swaphintswuid", &swaphints_w_device, &swaphints_wusr_fops },
+	{ "swaphintspriv", &swaphints_c_device, &swaphints_priv_fops }
 };
-#define SCULL_N_ADEVS 4
+#define SWAPHINTS_N_ADEVS 4
 
 /*
  * Set up a single device.
  */
-static void scull_access_setup (dev_t devno, struct scull_adev_info *devinfo)
+static void swaphints_access_setup (dev_t devno, struct swaphints_adev_info *devinfo)
 {
-	struct scull_dev *dev = devinfo->sculldev;
+	struct swaphints_dev *dev = devinfo->swaphintsdev;
 	int err;
 
 	/* Initialize the device structure */
-	dev->quantum = scull_quantum;
-	dev->qset = scull_qset;
+	dev->quantum = swaphints_quantum;
+	dev->qset = swaphints_qset;
 	mutex_init(&dev->lock);
 
 	/* Do the cdev stuff. */
@@ -366,48 +366,48 @@ static void scull_access_setup (dev_t devno, struct scull_adev_info *devinfo)
 }
 
 
-int scull_access_init(dev_t firstdev)
+int swaphints_access_init(dev_t firstdev)
 {
 	int result, i;
 
 	/* Get our number space */
-	result = register_chrdev_region (firstdev, SCULL_N_ADEVS, "sculla");
+	result = register_chrdev_region (firstdev, SWAPHINTS_N_ADEVS, "swaphintsa");
 	if (result < 0) {
-		printk(KERN_WARNING "sculla: device number registration failed\n");
+		printk(KERN_WARNING "swaphintsa: device number registration failed\n");
 		return 0;
 	}
-	scull_a_firstdev = firstdev;
+	swaphints_a_firstdev = firstdev;
 
 	/* Set up each device. */
-	for (i = 0; i < SCULL_N_ADEVS; i++)
-		scull_access_setup (firstdev + i, scull_access_devs + i);
-	return SCULL_N_ADEVS;
+	for (i = 0; i < SWAPHINTS_N_ADEVS; i++)
+		swaphints_access_setup (firstdev + i, swaphints_access_devs + i);
+	return SWAPHINTS_N_ADEVS;
 }
 
 /*
  * This is called by cleanup_module or on failure.
  * It is required to never fail, even if nothing was initialized first
  */
-void scull_access_cleanup(void)
+void swaphints_access_cleanup(void)
 {
-	struct scull_listitem *lptr, *next;
+	struct swaphints_listitem *lptr, *next;
 	int i;
 
 	/* Clean up the static devs */
-	for (i = 0; i < SCULL_N_ADEVS; i++) {
-		struct scull_dev *dev = scull_access_devs[i].sculldev;
+	for (i = 0; i < SWAPHINTS_N_ADEVS; i++) {
+		struct swaphints_dev *dev = swaphints_access_devs[i].swaphintsdev;
 		cdev_del(&dev->cdev);
-		scull_trim(scull_access_devs[i].sculldev);
+		swaphints_trim(swaphints_access_devs[i].swaphintsdev);
 	}
 
     	/* And all the cloned devices */
-	list_for_each_entry_safe(lptr, next, &scull_c_list, list) {
+	list_for_each_entry_safe(lptr, next, &swaphints_c_list, list) {
 		list_del(&lptr->list);
-		scull_trim(&(lptr->device));
+		swaphints_trim(&(lptr->device));
 		kfree(lptr);
 	}
 
 	/* Free up our number space */
-	unregister_chrdev_region(scull_a_firstdev, SCULL_N_ADEVS);
+	unregister_chrdev_region(swaphints_a_firstdev, SWAPHINTS_N_ADEVS);
 	return;
 }
