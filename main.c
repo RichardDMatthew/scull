@@ -41,14 +41,14 @@
 int swaphints_major =   SWAPHINTS_MAJOR;
 int swaphints_minor =   0;
 int swaphints_nr_devs = SWAPHINTS_NR_DEVS;	/* number of bare swaphints devices */
-int swaphints_quantum = SWAPHINTS_QUANTUM;
-int swaphints_qset =    SWAPHINTS_QSET;
+//int swaphints_quantum = SWAPHINTS_QUANTUM;
+//int swaphints_qset =    SWAPHINTS_QSET;
 
 module_param(swaphints_major, int, S_IRUGO);
 module_param(swaphints_minor, int, S_IRUGO);
 module_param(swaphints_nr_devs, int, S_IRUGO);
-module_param(swaphints_quantum, int, S_IRUGO);
-module_param(swaphints_qset, int, S_IRUGO);
+//module_param(swaphints_quantum, int, S_IRUGO);
+//module_param(swaphints_qset, int, S_IRUGO);
 
 MODULE_AUTHOR("Alessandro Rubini, Jonathan Corbet");
 MODULE_LICENSE("Dual BSD/GPL");
@@ -246,12 +246,12 @@ int swaphints_open(struct inode *inode, struct file *filp)
 	filp->private_data = dev; /* for other methods */
 
 	/* now trim to 0 the length of the device if open was write-only */
-	if ( (filp->f_flags & O_ACCMODE) == O_WRONLY) {
-		if (mutex_lock_interruptible(&dev->lock))
-			return -ERESTARTSYS;
-		//swaphints_trim(dev); /* ignore errors */
-		mutex_unlock(&dev->lock);
-	}
+	// if ( (filp->f_flags & O_ACCMODE) == O_WRONLY) {
+	// 	// if (mutex_lock_interruptible(&dev->lock))
+	// 	// 	return -ERESTARTSYS;
+	// 	//swaphints_trim(dev); /* ignore errors */
+	// 	//mutex_unlock(&dev->lock);
+	// }
 	return 0;          /* success */
 }
 
@@ -396,7 +396,7 @@ int swaphints_release(struct inode *inode, struct file *filp)
 long swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 
-	int err = 0, tmp;
+	int err = 0;
 	int retval = 0;
     
 	/*
@@ -419,81 +419,41 @@ long swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (err) return -EFAULT;
 
 	switch(cmd) {
+                
+	//   case SWAPHINTS_IOCSQSET:
+	// 	if (! capable (CAP_SYS_ADMIN))
+	// 		return -EPERM;
+	// 	retval = __get_user(swaphints_qset, (int __user *)arg);
+	// 	break;
 
-	  case SWAPHINTS_IOCRESET:
-		swaphints_quantum = SWAPHINTS_QUANTUM;
-		swaphints_qset = SWAPHINTS_QSET;
-		break;
-        
-	  case SWAPHINTS_IOCSQUANTUM: /* Set: arg points to the value */
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		retval = __get_user(swaphints_quantum, (int __user *)arg);
-		break;
+	//   case SWAPHINTS_IOCTQSET:
+	// 	if (! capable (CAP_SYS_ADMIN))
+	// 		return -EPERM;
+	// 	swaphints_qset = arg;
+	// 	break;
 
-	  case SWAPHINTS_IOCTQUANTUM: /* Tell: arg is the value */
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		swaphints_quantum = arg;
-		break;
+	//   case SWAPHINTS_IOCGQSET:
+	// 	retval = __put_user(swaphints_qset, (int __user *)arg);
+	// 	break;
 
-	  case SWAPHINTS_IOCGQUANTUM: /* Get: arg is pointer to result */
-		retval = __put_user(swaphints_quantum, (int __user *)arg);
-		break;
+	//   case SWAPHINTS_IOCQQSET:
+	// 	return swaphints_qset;
 
-	  case SWAPHINTS_IOCQQUANTUM: /* Query: return it (it's positive) */
-		return swaphints_quantum;
+	//   case SWAPHINTS_IOCXQSET:
+	// 	if (! capable (CAP_SYS_ADMIN))
+	// 		return -EPERM;
+	// 	tmp = swaphints_qset;
+	// 	retval = __get_user(swaphints_qset, (int __user *)arg);
+	// 	if (retval == 0)
+	// 		retval = put_user(tmp, (int __user *)arg);
+	// 	break;
 
-	  case SWAPHINTS_IOCXQUANTUM: /* eXchange: use arg as pointer */
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		tmp = swaphints_quantum;
-		retval = __get_user(swaphints_quantum, (int __user *)arg);
-		if (retval == 0)
-			retval = __put_user(tmp, (int __user *)arg);
-		break;
-
-	  case SWAPHINTS_IOCHQUANTUM: /* sHift: like Tell + Query */
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		tmp = swaphints_quantum;
-		swaphints_quantum = arg;
-		return tmp;
-        
-	  case SWAPHINTS_IOCSQSET:
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		retval = __get_user(swaphints_qset, (int __user *)arg);
-		break;
-
-	  case SWAPHINTS_IOCTQSET:
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		swaphints_qset = arg;
-		break;
-
-	  case SWAPHINTS_IOCGQSET:
-		retval = __put_user(swaphints_qset, (int __user *)arg);
-		break;
-
-	  case SWAPHINTS_IOCQQSET:
-		return swaphints_qset;
-
-	  case SWAPHINTS_IOCXQSET:
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		tmp = swaphints_qset;
-		retval = __get_user(swaphints_qset, (int __user *)arg);
-		if (retval == 0)
-			retval = put_user(tmp, (int __user *)arg);
-		break;
-
-	  case SWAPHINTS_IOCHQSET:
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		tmp = swaphints_qset;
-		swaphints_qset = arg;
-		return tmp;
+	//   case SWAPHINTS_IOCHQSET:
+	// 	if (! capable (CAP_SYS_ADMIN))
+	// 		return -EPERM;
+	// 	tmp = swaphints_qset;
+	// 	swaphints_qset = arg;
+	// 	return tmp;
 
         /*
          * The following two change the buffer size for swaphintspipe.
@@ -501,12 +461,12 @@ long swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
          * write less code. Actually, it's the same driver, isn't it?
          */
 
-	  case SWAPHINTS_P_IOCTSIZE:
-		swaphints_p_buffer = arg;
-		break;
+	//   case SWAPHINTS_P_IOCTSIZE:
+	// 	swaphints_p_buffer = arg;
+	// 	break;
 
-	  case SWAPHINTS_P_IOCQSIZE:
-		return swaphints_p_buffer;
+	//   case SWAPHINTS_P_IOCQSIZE:
+	// 	return swaphints_p_buffer;
 
 
 	  default:  /* redundant, as cmd was checked against MAXNR */
@@ -591,8 +551,8 @@ void swaphints_cleanup_module(void)
 	unregister_chrdev_region(devno, swaphints_nr_devs);
 
 	/* and call the cleanup functions for friend devices */
-	swaphints_p_cleanup();
-	swaphints_access_cleanup();
+	//swaphints_p_cleanup();
+	//swaphints_access_cleanup();
 
 }
 
@@ -648,16 +608,16 @@ int swaphints_init_module(void)
 
         /* Initialize each device. */
 	for (i = 0; i < swaphints_nr_devs; i++) {
-		swaphints_devices[i].quantum = swaphints_quantum;
-		swaphints_devices[i].qset = swaphints_qset;
-		mutex_init(&swaphints_devices[i].lock);
+		//swaphints_devices[i].quantum = swaphints_quantum;
+		//swaphints_devices[i].qset = swaphints_qset;
+		//mutex_init(&swaphints_devices[i].lock);
 		swaphints_setup_cdev(&swaphints_devices[i], i);
 	}
 
         /* At this point call the init function for any friend device */
 	dev = MKDEV(swaphints_major, swaphints_minor + swaphints_nr_devs);
-	dev += swaphints_p_init(dev);
-	dev += swaphints_access_init(dev);
+	//dev += swaphints_p_init(dev);
+	//dev += swaphints_access_init(dev);
 
 // #ifdef SWAPHINTS_DEBUG /* only when debugging */
 // 	swaphints_create_proc();

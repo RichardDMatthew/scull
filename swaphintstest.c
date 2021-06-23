@@ -9,10 +9,19 @@
 #include <stdio.h>
 #include <fcntl.h>
 
+#include "swaphints.h"
+
 int main() {
    int fd, result, len;
    char buf[10];
    const char *str;
+
+   swaphints_request_t *requests;
+   swaphints_response_t *responses;
+
+   requests = (swaphints_request_t*)malloc(sizeof(swaphints_request_t));
+   responses = (swaphints_response_t*)malloc(sizeof(swaphints_response_t));
+  
    if ((fd = open("/dev/swaphints", O_WRONLY)) == -1) {
       perror("1. open failed");
       return -1;

@@ -45,11 +45,11 @@
 #endif
 
 #ifndef SWAPHINTS_NR_DEVS
-#define SWAPHINTS_NR_DEVS 4    /* swaphints0 through swaphints3 */
+#define SWAPHINTS_NR_DEVS 1    /* swaphints0 through swaphints3 */
 #endif
 
 #ifndef SWAPHINTS_P_NR_DEVS
-#define SWAPHINTS_P_NR_DEVS 4  /* swaphintspipe0 through swaphintspipe3 */
+#define SWAPHINTS_P_NR_DEVS 1  /* swaphintspipe0 through swaphintspipe3 */
 #endif
 
 /*
@@ -61,36 +61,36 @@
  *
  * The array (quantum-set) is SWAPHINTS_QSET long.
  */
-#ifndef SWAPHINTS_QUANTUM
-#define SWAPHINTS_QUANTUM 4000
-#endif
+// #ifndef SWAPHINTS_QUANTUM
+// #define SWAPHINTS_QUANTUM 4000
+// #endif
 
-#ifndef SWAPHINTS_QSET
-#define SWAPHINTS_QSET    1000
-#endif
+// #ifndef SWAPHINTS_QSET
+// #define SWAPHINTS_QSET    1000
+// #endif
 
 /*
  * The pipe device is a simple circular buffer. Here its default size
  */
-#ifndef SWAPHINTS_P_BUFFER
-#define SWAPHINTS_P_BUFFER 4000
-#endif
+// #ifndef SWAPHINTS_P_BUFFER
+// #define SWAPHINTS_P_BUFFER 4000
+// #endif
 
 /*
  * Representation of swaphints quantum sets.
  */
-struct swaphints_qset {
-	void **data;
-	struct swaphints_qset *next;
-};
+// struct swaphints_qset {
+// 	void **data;
+// 	struct swaphints_qset *next;
+// };
 
 struct swaphints_dev {
-	struct swaphints_qset *data;  /* Pointer to first quantum set */
-	int quantum;              /* the current quantum size */
-	int qset;                 /* the current array size */
-	unsigned long size;       /* amount of data stored here */
-	unsigned int access_key;  /* used by swaphintsuid and swaphintspriv */
-	struct mutex lock;     /* mutual exclusion semaphore     */
+	//struct swaphints_qset *data;  /* Pointer to first quantum set */
+	//int quantum;              /* the current quantum size */
+	//int qset;                 /* the current array size */
+	//unsigned long size;       /* amount of data stored here */
+	//unsigned int access_key;  /* used by swaphintsuid and swaphintspriv */
+	//struct mutex lock;     /* mutual exclusion semaphore     */
 	struct cdev cdev;	  /* Char device structure		*/
 };
 
@@ -106,20 +106,20 @@ struct swaphints_dev {
  */
 extern int swaphints_major;     /* main.c */
 extern int swaphints_nr_devs;
-extern int swaphints_quantum;
-extern int swaphints_qset;
+//extern int swaphints_quantum;
+//extern int swaphints_qset;
 
-extern int swaphints_p_buffer;	/* pipe.c */
+//extern int swaphints_p_buffer;	/* pipe.c */
 
 
 /*
  * Prototypes for shared functions
  */
 
-int     swaphints_p_init(dev_t dev);
-void    swaphints_p_cleanup(void);
-int     swaphints_access_init(dev_t dev);
-void    swaphints_access_cleanup(void);
+//int     swaphints_p_init(dev_t dev);
+//void    swaphints_p_cleanup(void);
+//int     swaphints_access_init(dev_t dev);
+//void    swaphints_access_cleanup(void);
 
 // int     swaphints_trim(struct swaphints_dev *dev);
 
