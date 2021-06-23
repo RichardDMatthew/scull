@@ -1,7 +1,7 @@
 #!/bin/sh
 # $Id: swaphints_load,v 1.4 2004/11/03 06:19:49 rubini Exp $
-module="swaphints"
-device="swaphints"
+module="scull"
+device="scull"
 mode="664"
 
 # Group: since distributions do it differently, look for wheel or use staff

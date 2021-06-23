@@ -132,7 +132,7 @@ static ssize_t swaphints_p_read (struct file *filp, char __user *buf, size_t cou
 		mutex_unlock(&dev->lock); /* release the lock */
 		if (filp->f_flags & O_NONBLOCK)
 			return -EAGAIN;
-		PDEBUG("\"%s\" reading: going to sleep\n", current->comm);
+		//PDEBUG("\"%s\" reading: going to sleep\n", current->comm);
 		if (wait_event_interruptible(dev->inq, (dev->rp != dev->wp)))
 			return -ERESTARTSYS; /* signal: tell the fs layer to handle it */
 		/* otherwise loop, but first reacquire the lock */
@@ -155,7 +155,7 @@ static ssize_t swaphints_p_read (struct file *filp, char __user *buf, size_t cou
 
 	/* finally, awake any writers and return */
 	wake_up_interruptible(&dev->outq);
-	PDEBUG("\"%s\" did read %li bytes\n",current->comm, (long)count);
+	//PDEBUG("\"%s\" did read %li bytes\n",current->comm, (long)count);
 	return count;
 }
 
@@ -169,7 +169,7 @@ static int swaphints_getwritespace(struct swaphints_pipe *dev, struct file *filp
 		mutex_unlock(&dev->lock);
 		if (filp->f_flags & O_NONBLOCK)
 			return -EAGAIN;
-		PDEBUG("\"%s\" writing: going to sleep\n",current->comm);
+		//PDEBUG("\"%s\" writing: going to sleep\n",current->comm);
 		prepare_to_wait(&dev->outq, &wait, TASK_INTERRUPTIBLE);
 		if (spacefree(dev) == 0)
 			schedule();
@@ -210,7 +210,7 @@ static ssize_t swaphints_p_write(struct file *filp, const char __user *buf, size
 		count = min(count, (size_t)(dev->end - dev->wp)); /* to end-of-buf */
 	else /* the write pointer has wrapped, fill up to rp-1 */
 		count = min(count, (size_t)(dev->rp - dev->wp - 1));
-	PDEBUG("Going to accept %li bytes to %p from %p\n", (long)count, dev->wp, buf);
+	//PDEBUG("Going to accept %li bytes to %p from %p\n", (long)count, dev->wp, buf);
 	if (copy_from_user(dev->wp, buf, count)) {
 		mutex_unlock(&dev->lock);
 		return -EFAULT;
@@ -226,7 +226,7 @@ static ssize_t swaphints_p_write(struct file *filp, const char __user *buf, size
 	/* and signal asynchronous readers, explained late in chapter 5 */
 	if (dev->async_queue)
 		kill_fasync(&dev->async_queue, SIGIO, POLL_IN);
-	PDEBUG("\"%s\" did write %li bytes\n",current->comm, (long)count);
+	//PDEBUG("\"%s\" did write %li bytes\n",current->comm, (long)count);
 	return count;
 }
 

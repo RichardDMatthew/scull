@@ -24,21 +24,21 @@
  * Macros to help debugging
  */
 
-#undef PDEBUG             /* undef it, just in case */
-#ifdef SWAPHINTS_DEBUG
-#  ifdef __KERNEL__
-     /* This one if debugging is on, and kernel space */
-#    define PDEBUG(fmt, args...) printk( KERN_DEBUG "swaphints: " fmt, ## args)
-#  else
-     /* This one for user space */
-#    define PDEBUG(fmt, args...) fprintf(stderr, fmt, ## args)
-#  endif
-#else
-#  define PDEBUG(fmt, args...) /* not debugging: nothing */
-#endif
+//#undef PDEBUG             /* undef it, just in case */
+// #ifdef SWAPHINTS_DEBUG
+// #  ifdef __KERNEL__
+//      /* This one if debugging is on, and kernel space */
+// #    define PDEBUG(fmt, args...) printk( KERN_DEBUG "swaphints: " fmt, ## args)
+// #  else
+//      /* This one for user space */
+// #    define PDEBUG(fmt, args...) fprintf(stderr, fmt, ## args)
+// #  endif
+// #else
+// #  define PDEBUG(fmt, args...) /* not debugging: nothing */
+// #endif
 
-#undef PDEBUGG
-#define PDEBUGG(fmt, args...) /* nothing: it's a placeholder */
+// #undef PDEBUGG
+// #define PDEBUGG(fmt, args...) /* nothing: it's a placeholder */
 
 #ifndef SWAPHINTS_MAJOR
 #define SWAPHINTS_MAJOR 0   /* dynamic major by default */
@@ -121,13 +121,13 @@ void    swaphints_p_cleanup(void);
 int     swaphints_access_init(dev_t dev);
 void    swaphints_access_cleanup(void);
 
-int     swaphints_trim(struct swaphints_dev *dev);
+// int     swaphints_trim(struct swaphints_dev *dev);
 
-ssize_t swaphints_read(struct file *filp, char __user *buf, size_t count,
-                   loff_t *f_pos);
-ssize_t swaphints_write(struct file *filp, const char __user *buf, size_t count,
-                    loff_t *f_pos);
-loff_t  swaphints_llseek(struct file *filp, loff_t off, int whence);
+// ssize_t swaphints_read(struct file *filp, char __user *buf, size_t count,
+//                    loff_t *f_pos);
+// ssize_t swaphints_write(struct file *filp, const char __user *buf, size_t count,
+//                     loff_t *f_pos);
+// loff_t  swaphints_llseek(struct file *filp, loff_t off, int whence);
 long     swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 
 
@@ -177,17 +177,15 @@ long     swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 /* start of swaphints structs */
 #define MAX_PFNCOUNT 10000
 
-typedef struct
-{
-int count;
-uint64_t pfns[MAX_PFNCOUNT];
-} swaphints_request_t
+struct swaphints_request{
+	u32 count;
+	u64 pfns[MAX_PFNCOUNT];
+} typedef swaphints_request_t;
 
-typedef struct
-{
-int count;
-uint64_t returncodes[MAX_PFNCOUNT];
-} swaphints_response_t
+struct swaphints_response{
+	u32 count;
+	u64 returncodes[MAX_PFNCOUNT];
+} typedef swaphints_response_t;
 
 /* While these are statically sized the 'count' field will enable us to 
  * signal how many elements if the array to process even if the ioctl 

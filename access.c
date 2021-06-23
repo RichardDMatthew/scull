@@ -62,8 +62,8 @@ static int swaphints_s_open(struct inode *inode, struct file *filp)
 	}
 
 	/* then, everything else is copied from the bare swaphints device */
-	if ( (filp->f_flags & O_ACCMODE) == O_WRONLY)
-		swaphints_trim(dev);
+	// if ( (filp->f_flags & O_ACCMODE) == O_WRONLY)
+	// 	swaphints_trim(dev);
 	filp->private_data = dev;
 	return 0;          /* success */
 }
@@ -80,9 +80,9 @@ static int swaphints_s_release(struct inode *inode, struct file *filp)
  */
 struct file_operations swaphints_sngl_fops = {
 	.owner =	THIS_MODULE,
-	.llseek =     	swaphints_llseek,
-	.read =       	swaphints_read,
-	.write =      	swaphints_write,
+	//.llseek =     	swaphints_llseek,
+	//.read =       	swaphints_read,
+	//.write =      	swaphints_write,
 	.unlocked_ioctl = swaphints_ioctl,
 	.open =       	swaphints_s_open,
 	.release =    	swaphints_s_release,
@@ -121,8 +121,8 @@ static int swaphints_u_open(struct inode *inode, struct file *filp)
 
 /* then, everything else is copied from the bare swaphints device */
 
-	if ((filp->f_flags & O_ACCMODE) == O_WRONLY)
-		swaphints_trim(dev);
+	// if ((filp->f_flags & O_ACCMODE) == O_WRONLY)
+	// 	swaphints_trim(dev);
 	filp->private_data = dev;
 	return 0;          /* success */
 }
@@ -142,9 +142,9 @@ static int swaphints_u_release(struct inode *inode, struct file *filp)
  */
 struct file_operations swaphints_user_fops = {
 	.owner =      THIS_MODULE,
-	.llseek =     swaphints_llseek,
-	.read =       swaphints_read,
-	.write =      swaphints_write,
+	// .llseek =     swaphints_llseek,
+	// .read =       swaphints_read,
+	// .write =      swaphints_write,
 	.unlocked_ioctl = swaphints_ioctl,
 	.open =       swaphints_u_open,
 	.release =    swaphints_u_release,
@@ -189,8 +189,8 @@ static int swaphints_w_open(struct inode *inode, struct file *filp)
 	spin_unlock(&swaphints_w_lock);
 
 	/* then, everything else is copied from the bare swaphints device */
-	if ((filp->f_flags & O_ACCMODE) == O_WRONLY)
-		swaphints_trim(dev);
+	// if ((filp->f_flags & O_ACCMODE) == O_WRONLY)
+	// 	swaphints_trim(dev);
 	filp->private_data = dev;
 	return 0;          /* success */
 }
@@ -215,9 +215,9 @@ static int swaphints_w_release(struct inode *inode, struct file *filp)
  */
 struct file_operations swaphints_wusr_fops = {
 	.owner =      THIS_MODULE,
-	.llseek =     swaphints_llseek,
-	.read =       swaphints_read,
-	.write =      swaphints_write,
+	// .llseek =     swaphints_llseek,
+	// .read =       swaphints_read,
+	// .write =      swaphints_write,
 	.unlocked_ioctl = swaphints_ioctl,
 	.open =       swaphints_w_open,
 	.release =    swaphints_w_release,
@@ -263,7 +263,7 @@ static struct swaphints_dev *swaphints_c_lookfor_device(dev_t key)
 	/* initialize the device */
 	memset(lptr, 0, sizeof(struct swaphints_listitem));
 	lptr->key = key;
-	swaphints_trim(&(lptr->device)); /* initialize it */
+	//swaphints_trim(&(lptr->device)); /* initialize it */
 	mutex_init(&lptr->device.lock);
 
 	/* place it in the list */
@@ -278,7 +278,7 @@ static int swaphints_c_open(struct inode *inode, struct file *filp)
 	dev_t key;
  
 	if (!current->signal->tty) { 
-		PDEBUG("Process \"%s\" has no ctl tty\n", current->comm);
+		//PDEBUG("Process \"%s\" has no ctl tty\n", current->comm);
 		return -EINVAL;
 	}
 	key = tty_devnum(current->signal->tty);
@@ -292,8 +292,8 @@ static int swaphints_c_open(struct inode *inode, struct file *filp)
 		return -ENOMEM;
 
 	/* then, everything else is copied from the bare swaphints device */
-	if ( (filp->f_flags & O_ACCMODE) == O_WRONLY)
-		swaphints_trim(dev);
+	// if ( (filp->f_flags & O_ACCMODE) == O_WRONLY)
+	// 	swaphints_trim(dev);
 	filp->private_data = dev;
 	return 0;          /* success */
 }
@@ -314,9 +314,9 @@ static int swaphints_c_release(struct inode *inode, struct file *filp)
  */
 struct file_operations swaphints_priv_fops = {
 	.owner =    THIS_MODULE,
-	.llseek =   swaphints_llseek,
-	.read =     swaphints_read,
-	.write =    swaphints_write,
+	// .llseek =   swaphints_llseek,
+	// .read =     swaphints_read,
+	// .write =    swaphints_write,
 	.unlocked_ioctl = swaphints_ioctl,
 	.open =     swaphints_c_open,
 	.release =  swaphints_c_release,
@@ -397,13 +397,13 @@ void swaphints_access_cleanup(void)
 	for (i = 0; i < SWAPHINTS_N_ADEVS; i++) {
 		struct swaphints_dev *dev = swaphints_access_devs[i].swaphintsdev;
 		cdev_del(&dev->cdev);
-		swaphints_trim(swaphints_access_devs[i].swaphintsdev);
+		//swaphints_trim(swaphints_access_devs[i].swaphintsdev);
 	}
 
     	/* And all the cloned devices */
 	list_for_each_entry_safe(lptr, next, &swaphints_c_list, list) {
 		list_del(&lptr->list);
-		swaphints_trim(&(lptr->device));
+		//swaphints_trim(&(lptr->device));
 		kfree(lptr);
 	}
 
