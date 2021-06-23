@@ -54,7 +54,8 @@ MODULE_AUTHOR("Alessandro Rubini, Jonathan Corbet");
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct swaphints_dev *swaphints_devices;	/* allocated in swaphints_init_module */
-
+swaphints_request_t *requests;
+swaphints_response_t *responses;
 
 /*
  * Empty out the swaphints device; must be called with the device
@@ -584,14 +585,14 @@ int swaphints_init_module(void)
 	 */
 	if (swaphints_major) {
 		dev = MKDEV(swaphints_major, swaphints_minor);
-		result = register_chrdev_region(dev, swaphints_nr_devs, "scull");
+		result = register_chrdev_region(dev, swaphints_nr_devs, "swaphints");
 	} else {
 		result = alloc_chrdev_region(&dev, swaphints_minor, swaphints_nr_devs,
-				"scull");
+				"swaphints");
 		swaphints_major = MAJOR(dev);
 	}
 	if (result < 0) {
-		printk(KERN_WARNING "scull: can't get major %d\n", swaphints_major);
+		printk(KERN_WARNING "swaphints: can't get major %d\n", swaphints_major);
 		return result;
 	}
 

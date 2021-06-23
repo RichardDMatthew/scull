@@ -84,6 +84,24 @@
 // 	struct swaphints_qset *next;
 // };
 
+/* start of swaphints structs */
+#define MAX_PFNCOUNT 10
+
+typedef struct swaphints_request{
+	u32 count;
+	u64 pfns[MAX_PFNCOUNT];
+} swaphints_request_t;
+
+typedef struct swaphints_response{
+	u32 count;
+	u64 returncodes[MAX_PFNCOUNT];
+} swaphints_response_t;
+
+/* While these are statically sized the 'count' field will enable us to 
+ * signal how many elements if the array to process even if the ioctl 
+ * transfers the whole list.
+ */
+
 struct swaphints_dev {
 	//struct swaphints_qset *data;  /* Pointer to first quantum set */
 	//int quantum;              /* the current quantum size */
@@ -91,6 +109,8 @@ struct swaphints_dev {
 	//unsigned long size;       /* amount of data stored here */
 	//unsigned int access_key;  /* used by swaphintsuid and swaphintspriv */
 	//struct mutex lock;     /* mutual exclusion semaphore     */
+	swaphints_request_t requests;	/* requests being sent down */
+	swaphints_response_t responses;	/* responses being returned */
 	struct cdev cdev;	  /* Char device structure		*/
 };
 
@@ -172,24 +192,5 @@ long     swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 /* ... more to come */
 
 #define SWAPHINTS_IOC_MAXNR 14
-
-
-/* start of swaphints structs */
-#define MAX_PFNCOUNT 10000
-
-struct swaphints_request{
-	u32 count;
-	u64 pfns[MAX_PFNCOUNT];
-} typedef swaphints_request_t;
-
-struct swaphints_response{
-	u32 count;
-	u64 returncodes[MAX_PFNCOUNT];
-} typedef swaphints_response_t;
-
-/* While these are statically sized the 'count' field will enable us to 
- * signal how many elements if the array to process even if the ioctl 
- * transfers the whole list.
- */
 
 #endif /* _SWAPHINTS_H_ */

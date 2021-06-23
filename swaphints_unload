@@ -1,6 +1,6 @@
 #!/bin/sh
-module="scull"
-device="scull"
+module="swaphints"
+device="swaphints"
 
 # invoke rmmod with all arguments we got
 rmmod $module $* || exit 1
