@@ -8,6 +8,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
 
 #include "swaphints.h"
 
@@ -27,50 +30,33 @@ int main() {
       return -1;
    }
 
-   str = "abcde"; 
-   len = strlen(str);
-   if ((result = write(fd, str, len)) != len) {
-      perror("1. write failed");
-      return -1;
+   for(uint64_t i = 0; i < MAX_PFNCOUNT; i++){
+      requests->pfns[i] = i;
    }
-   close(fd);
+   requests->count = MAX_PFNCOUNT;
 
-   if ((fd = open("/dev/swaphints", O_RDONLY)) == -1) {
-      perror("2. open failed");
-      return -1;
+   for(uint64_t i = 0; i < MAX_PFNCOUNT; i++){
+      printf("%lu,",requests->pfns[i]);
    }
-   if ((result = read(fd, &buf, sizeof(buf))) != len) {
-      fprintf(stdout, "1. read failed, buf=%s",buf);
+   printf("\n count is %u\n", requests->count);
+
+   if ((result = ioctl(fd, SWAPHINTS_SEND_REQUEST, requests)) != 0) {
+      fprintf(stdout, "1. requests failed - result %d", result);
       return -1;
    } 
-   buf[result] = '\0';
-   if (strncmp (buf, str, len)) {
-      fprintf (stdout, "failed: read back \"%s\"\n", buf);
-   } else {
-      fprintf (stdout, "passed\n");
-   }
-   close(fd);
-   
-   
-   str = "xyz"; len = strlen(str);
-   if ((fd = open ("/dev/swaphintspipe", O_RDWR)) == -1) {
-      perror("3. open failed");
+
+   if ((result = ioctl(fd, SWAPHINTS_GET_RESPONSE, responses)) != 0) {
+      fprintf(stdout, "1. responses failed - result %d", result);
       return -1;
+   } 
+
+   for(uint64_t i = 0; i < MAX_PFNCOUNT; i++){
+      printf("%lu,",responses->returncodes[i]);
    }
-   if ((result = write (fd, str, len)) != len) {
-      perror("3. write failed");
-      return -1;
-   }
-   if ((result = read (fd, &buf, sizeof(buf))) != len) {
-      perror("3. read failed");
-      return -1;
-   }
-   buf[result] = '\0';
-   if (strncmp (buf, str, len)) {
-      fprintf (stdout, "failed: read back \"%s\"\n", buf);
-   } else {
-      fprintf (stdout, "passed\n");
-   }
+   printf("\n count is %u\n", responses->count);
+
+
+
    close(fd);
    return 0;
    

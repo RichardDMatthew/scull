@@ -40,19 +40,16 @@
 
 int swaphints_major =   SWAPHINTS_MAJOR;
 int swaphints_minor =   0;
-int swaphints_nr_devs = SWAPHINTS_NR_DEVS;	/* number of bare swaphints devices */
+//int swaphints_nr_devs = SWAPHINTS_NR_DEVS;	/* number of bare swaphints devices */
 
 module_param(swaphints_major, int, S_IRUGO);
 module_param(swaphints_minor, int, S_IRUGO);
-module_param(swaphints_nr_devs, int, S_IRUGO);
+//module_param(swaphints_nr_devs, int, S_IRUGO);
 
 MODULE_AUTHOR("Alessandro Rubini, Jonathan Corbet");
 MODULE_LICENSE("Dual BSD/GPL");
 
-struct swaphints_dev *swaphints_devices;	/* allocated in swaphints_init_module */
-swaphints_request_t *requests;
-swaphints_response_t *responses;
-
+struct swaphints_dev *swaphints_device;	/* allocated in swaphints_init_module */
 
 /*
  * Open and close
@@ -79,9 +76,10 @@ int swaphints_release(struct inode *inode, struct file *filp)
 
 long swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-
+	struct swaphints_dev *dev = filp->private_data;
 	int err = 0;
 	int retval = 0;
+	int i;
     
 	/*
 	 * extract the type and number bitfields, and don't decode
@@ -104,10 +102,18 @@ long swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch(cmd) {
 		case SWAPHINTS_SEND_REQUEST:
-			copy_from_user(&requests, (char *)arg, sizeof(struct swaphints_request));
-			break;
+			retval = copy_from_user(&dev->requests, (int32_t*)arg, sizeof(swaphints_request_t));
+			if(!retval){
+				dev->responses.count = 0;
+				for(i = 0; i < dev->requests.count; i++){
+					dev->responses.returncodes[(dev->requests.count - i) -1] = dev->requests.pfns[i];
+					dev->responses.count += 1;
+				}
+				//memcpy(&dev->responses, &dev->requests, sizeof(swaphints_request_t));
+			}
+			break; 
 		case SWAPHINTS_GET_RESPONSE:
-			copy_to_user((char *)arg, &responses, sizeof(swaphints_request_t));
+			retval = copy_to_user((int32_t*)arg, &dev->responses, sizeof(swaphints_response_t));
 			break;
 	  	default:  /* redundant, as cmd was checked against MAXNR */
 			return -ENOTTY;
@@ -133,19 +139,15 @@ struct file_operations swaphints_fops = {
  */
 void swaphints_cleanup_module(void)
 {
-	int i;
 	dev_t devno = MKDEV(swaphints_major, swaphints_minor);
 
-	/* Get rid of our char dev entries */
-	if (swaphints_devices) {
-		for (i = 0; i < swaphints_nr_devs; i++) {
-			cdev_del(&swaphints_devices[i].cdev);
-		}
-		kfree(swaphints_devices);
+	if (swaphints_device) {
+		cdev_del(&swaphints_device->cdev);
+		kfree(swaphints_device);
 	}
 
 	/* cleanup_module is never called if registering failed */
-	unregister_chrdev_region(devno, swaphints_nr_devs);
+	unregister_chrdev_region(devno, 1);
 
 }
 
@@ -177,10 +179,9 @@ int swaphints_init_module(void)
 	 */
 	if (swaphints_major) {
 		dev = MKDEV(swaphints_major, swaphints_minor);
-		result = register_chrdev_region(dev, swaphints_nr_devs, "swaphints");
+		result = register_chrdev_region(dev, 1, "swaphints");
 	} else {
-		result = alloc_chrdev_region(&dev, swaphints_minor, swaphints_nr_devs,
-				"swaphints");
+		result = alloc_chrdev_region(&dev, swaphints_minor, 1, "swaphints");
 		swaphints_major = MAJOR(dev);
 	}
 	if (result < 0) {
@@ -192,20 +193,18 @@ int swaphints_init_module(void)
 	 * allocate the devices -- we can't have them static, as the number
 	 * can be specified at load time
 	 */
-	swaphints_devices = kmalloc(swaphints_nr_devs * sizeof(struct swaphints_dev), GFP_KERNEL);
-	if (!swaphints_devices) {
+	swaphints_device = kmalloc(sizeof(struct swaphints_dev), GFP_KERNEL);
+	if (!swaphints_device) {
 		result = -ENOMEM;
 		goto fail;  /* Make this more graceful */
 	}
-	memset(swaphints_devices, 0, swaphints_nr_devs * sizeof(struct swaphints_dev));
+	memset(swaphints_device, 0, sizeof(struct swaphints_dev));
 
         /* Initialize each device. */
-	for (i = 0; i < swaphints_nr_devs; i++) {
-		swaphints_setup_cdev(&swaphints_devices[i], i);
-	}
+	swaphints_setup_cdev(swaphints_device, i);
 
         /* At this point call the init function for any friend device */
-	dev = MKDEV(swaphints_major, swaphints_minor + swaphints_nr_devs);
+	dev = MKDEV(swaphints_major, swaphints_minor);
 
 	return 0; /* succeed */
 

@@ -19,37 +19,47 @@
 #define _SWAPHINTS_H_
 
 #include <linux/ioctl.h> /* needed for the _IOW etc stuff used later */
-#include <linux/types.h> /* needed for a common definition of uints */
-
-#ifndef SWAPHINTS_MAJOR
-#define SWAPHINTS_MAJOR 0   /* dynamic major by default */
-#endif
-
-#ifndef SWAPHINTS_NR_DEVS
-#define SWAPHINTS_NR_DEVS 1    /* swaphints0 through swaphints3 */
-#endif
-
-#ifndef SWAPHINTS_P_NR_DEVS
-#define SWAPHINTS_P_NR_DEVS 1  /* swaphintspipe0 through swaphintspipe3 */
-#endif
 
 /* start of swaphints structs */
-#define MAX_PFNCOUNT 10
+#define MAX_PFNCOUNT 1000
 
 typedef struct swaphints_request{
-	u32 count;
-	u64 pfns[MAX_PFNCOUNT];
+	uint32_t count;
+	uint64_t pfns[MAX_PFNCOUNT];
 } swaphints_request_t;
 
 typedef struct swaphints_response{
-	u32 count;
-	u64 returncodes[MAX_PFNCOUNT];
+	uint32_t count;
+	uint64_t returncodes[MAX_PFNCOUNT];
 } swaphints_response_t;
 
 /* While these are statically sized the 'count' field will enable us to 
  * signal how many elements if the array to process even if the ioctl 
  * transfers the whole list.
  */
+
+/*
+ * Ioctl definitions
+ */
+
+/* Use 'k' as magic number */
+#define SWAPHINTS_IOC_MAGIC  'k'
+/* Please use a different 8-bit number in your code */
+/* refer to documentation/ioctl-number.txt */
+
+#define SWAPHINTS_IOCRESET     _IO(SWAPHINTS_IOC_MAGIC, 0)
+#define SWAPHINTS_SEND_REQUEST _IOW(SWAPHINTS_IOC_MAGIC,  1, int)
+#define SWAPHINTS_GET_RESPONSE _IOR(SWAPHINTS_IOC_MAGIC,  2, int)
+#define SWAPHINTS_IOC_MAXNR 2
+
+#ifdef __KERNEL__
+
+#ifndef SWAPHINTS_MAJOR
+#define SWAPHINTS_MAJOR 0   /* dynamic major by default */
+#endif
+
+
+long swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 
 struct swaphints_dev {
 	swaphints_request_t requests;	/* requests being sent down */
@@ -67,21 +77,8 @@ struct swaphints_dev {
  * The different configurable parameters
  */
 extern int swaphints_major;     /* main.c */
-extern int swaphints_nr_devs;
+//extern int swaphints_nr_devs;
 
-long swaphints_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
-
-/*
- * Ioctl definitions
- */
-
-/* Use 'k' as magic number */
-#define SWAPHINTS_IOC_MAGIC  'k'
-/* Please use a different 8-bit number in your code */
-
-#define SWAPHINTS_IOCRESET     _IO(SWAPHINTS_IOC_MAGIC, 0)
-#define SWAPHINTS_SEND_REQUEST _IOW(SWAPHINTS_IOC_MAGIC,  1, int)
-#define SWAPHINTS_GET_RESPONSE _IOW(SWAPHINTS_IOC_MAGIC,  2, int)
-#define SWAPHINTS_IOC_MAXNR 2
+#endif /* __KERNEL__ */
 
 #endif /* _SWAPHINTS_H_ */
